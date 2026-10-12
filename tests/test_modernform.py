@@ -173,7 +173,7 @@ def test_every_line_of_both_documents_matches_the_right_product(repo, path):
     assert {sku: quantity for sku, (_, quantity) in found.items()} == expected
     if path == PACKING_SLIP:
         shortened = [match for match in matches if match.line.original_sku.endswith("...")]
-        assert len(shortened) == 9
+        assert len(shortened) == 10   # 9 shortened codes + 'Trash Kit Sha...'
         assert all(match.match_status == MatchStatus.CONFIRMED_ALIAS and "verify" in match.review_message
                    for match in shortened)
 
@@ -189,7 +189,8 @@ def test_header_fields_are_read(repo):
         assert order.customer_name == "Highland Cabinetry Colorado 01"
         assert order.sales_rep == "IT" and order.order_date == "8/26/2026"
         assert order.packing_state.value == "flatpack"
-        assert not order.ignored or all(row["reason_code"] == "MISSING_QUANTITY" for row in order.ignored)
+        # Delivery/return notices printed in the item table are not items and do not flag the order.
+        assert all(row["reason_code"] == "NON_PHYSICAL_ROW" for row in order.ignored)
     assert "SO13157" in adapter.parse(ImportContext(filename=INVOICE.name, content=INVOICE.read_bytes(),
                                                     config=company.config)).orders[0].references
 
@@ -263,6 +264,14 @@ def test_import_both_documents_pack_and_prepare_every_broker(client, repo):
     launches = client.post("/api/quote-handoffs/prepare-all", json={"shipment_id": plan["id"]})
     assert launches.status_code == 200, launches.text
     handoffs = launches.json()["handoffs"]
+    try:
+        check_packet(client, plan, handoffs)
+    finally:   # handoffs live in the app process; leave none active for other tests
+        for handoff in handoffs:
+            client.post(f"/api/quote-handoffs/{handoff['request_id']}/cancel")
+
+
+def check_packet(client, plan, handoffs):
     assert {handoff["broker"] for handoff in handoffs} == {"echoship", "tql", "dsv", "myunishippers", "odfl"}
 
     # The Modernform Bridge (its own extension ID) can read the packet; another extension cannot.
@@ -271,7 +280,7 @@ def test_import_both_documents_pack_and_prepare_every_broker(client, repo):
     path = f"/api/quote-handoffs/{launch['request_id']}/packet"
     packet = client.get(path, params={"token": launch["token"]}, headers={"Origin": main.BUILD2QUOTE_EXTENSION_ORIGIN})
     assert packet.status_code == 200, packet.text
-    body = packet.json()
+    body = packet.json()["packet"]
     assert body["origin"]["postal_code"] == "75006" and body["destination"]["postal_code"] == "80011"
     assert len(body["pallets"]) == len(plan["pallets"])
     other = client.get(path, params={"token": launch["token"]},

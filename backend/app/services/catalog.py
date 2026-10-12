@@ -197,8 +197,10 @@ class CatalogImports:
             if preview.get("colors"):
                 save_cabinet_colors(repository, preview["catalog"], preview["colors"])
             self._previews.pop(preview_id, None)
-        return {"inserted": inserted, "updated": updated, "filename": preview["filename"],
-                "colors": len(preview.get("colors") or [])}
+        result = {"inserted": inserted, "updated": updated, "filename": preview["filename"]}
+        if preview.get("colors"):
+            result["colors"] = len(preview["colors"])
+        return result
 
 
 catalog_imports = CatalogImports()

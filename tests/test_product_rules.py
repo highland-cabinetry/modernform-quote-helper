@@ -158,7 +158,7 @@ def test_unknown_company_on_a_request_is_rejected(tmp_path):
 
 def test_describe_rule_sets_lists_every_rule_set_and_its_rules():
     described = {value["name"]: value for value in describe_rule_sets()}
-    assert set(described) == set(RULE_SETS) == {"highland", "none"}
+    assert set(described) == set(RULE_SETS) == {"highland", "modernform", "none"}
     highland_codes = {rule["code"] for rule in described["highland"]["rules"]}
     none_codes = {rule["code"] for rule in described["none"]["rules"]}
     assert {"PREFIXES", "BACK_ORDER", "NO_INVENTED_DATA", "CSB42", "TRASH_KIT"} <= highland_codes
@@ -171,8 +171,8 @@ def test_describe_rule_sets_lists_every_rule_set_and_its_rules():
 
 def test_import_formats_endpoint_and_company_config_validation(api):
     formats = api.get("/api/import-formats").json()
-    assert {a["name"] for a in formats["adapters"]} == {"highland_pdf", "text_layout", "table"}
-    assert {r["name"] for r in formats["rule_sets"]} == {"highland", "none"}
+    assert {a["name"] for a in formats["adapters"]} == {"highland_pdf", "modernform_pdf", "text_layout", "table"}
+    assert {r["name"] for r in formats["rule_sets"]} == {"highland", "modernform", "none"}
 
     companies = api.get("/api/companies").json()
     [default] = [c for c in companies if c["is_default"]]
