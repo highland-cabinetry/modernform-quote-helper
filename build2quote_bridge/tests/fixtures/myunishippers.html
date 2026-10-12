@@ -1,0 +1,38 @@
+<main><form>
+  <wwex-ui-book-shipment-destination-form class="origin-address">
+    <mat-form-field>Postal Code<input value="80011"></mat-form-field>
+    <mat-select formcontrolname="state" role="combobox">Colorado</mat-select>
+    <input formcontrolname="city" value="AURORA">
+  </wwex-ui-book-shipment-destination-form>
+  <wwex-ui-book-shipment-destination-form class="destination-address">
+    <mat-form-field>Postal Code<input id="my-destination-postal"></mat-form-field>
+    <mat-select formcontrolname="state" role="combobox"></mat-select>
+    <input formcontrolname="city">
+  </wwex-ui-book-shipment-destination-form>
+  <section id="my-handling-units">
+    <section class="handling-unit">
+      <wwex-ui-book-shipment-handling-unit-dimensions formcontrolname="handlingUnitDimensions">
+        <mat-select formcontrolname="handlingUnitTypes" role="combobox">Pallet</mat-select>
+        <input formcontrolname="numUnits" type="number">
+        <mat-select formcontrolname="stackable" role="combobox">Yes</mat-select>
+        <input formcontrolname="length">
+        <input formcontrolname="width">
+        <input formcontrolname="height">
+      </wwex-ui-book-shipment-handling-unit-dimensions>
+      <input formcontrolname="weight" type="number">
+      <mat-select formcontrolname="commodityClass" role="combobox"></mat-select>
+      <input formcontrolname="nmfc">
+      <input formcontrolname="description">
+    </section>
+  </section>
+  <button type="button" id="my-add-handling-unit">Handling Unit</button>
+  <mat-checkbox formcontrolname="residentialDelivery">Residential Delivery<input id="residentialDelivery-input" type="checkbox"></mat-checkbox>
+  <mat-checkbox formcontrolname="liftgateDelivery">Liftgate Delivery<input id="liftgateDelivery-input" type="checkbox"></mat-checkbox>
+  <div id="my-options">
+    <button type="button" role="option">Pallet</button>
+    <button type="button" role="option">No</button>
+    <button type="button" role="option">70</button>
+    <button type="button" role="option">92.5</button>
+  </div>
+  <button type="button" id="my-get-rates">Get Rates</button>
+</form></main>

@@ -1,0 +1,32 @@
+Modernform Quote Helper is installed.
+
+Open it from the Start menu or the desktop shortcut. It opens in its own window (Google Chrome in
+app mode) and keeps running quietly in the background after you close the window. To stop it, use
+Start menu > Modernform Quote Helper Tools > Stop Modernform Quote Helper.
+
+Your data stays in the data folder you chose. Updates and uninstalling never change or remove it,
+and Modernform Quote Helper backs up the database before a new version first opens it (in the data
+folder's "backups" folder).
+
+The product catalog starts with the standard RTA cabinet line's carton sizes and weights. In Product
+Catalog, add your cabinet colors (color name and item prefix, e.g. Natural Shaker = NS-) and review or
+add products; Export Excel gives the catalog as a simple workbook you can edit and import back. The
+ship-from address starts as 1520 Luna Rd Suite 140, Carrollton, TX 75006.
+
+BROKER AUTOFILL (Modernform Build2Quote Bridge) - once per computer
+1. In Chrome, open chrome://extensions and turn on "Developer mode" (top right).
+2. Click "Load unpacked" and choose the Bridge folder:
+   Start menu > Modernform Quote Helper Tools > Build2Quote Bridge folder
+   (usually %LOCALAPPDATA%\Programs\Modernform Quote Helper\bridge).
+3. Sign in to each broker website yourself. The Bridge only fills in the quote forms; it never
+   books a shipment.
+
+UPDATES
+Later versions come as an update file, ModernformQuoteHelperUpdate-<version>.zip. Put it in the
+updates folder (Start menu > Modernform Quote Helper Tools > Updates folder); Modernform Quote
+Helper shows "ready to install" and installs it itself when you click Install now. No installer
+runs, so no new approval is needed. You can also use Start menu > Modernform Quote Helper Tools >
+Install update file.
+
+After each update, restart Chrome, or click the reload arrow on Modernform Build2Quote Bridge in
+chrome://extensions, so the Bridge picks up the new version.

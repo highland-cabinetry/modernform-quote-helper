@@ -1,0 +1,243 @@
+/* Quote screens (3.2): the quote drawer, an order's quote history, Quote History, broker notes.
+   Builds on the tokens and primitives in styles.css / shell.css. */
+
+/* ---------- Stacked drawer ---------- */
+.drawer-backdrop.qd-backdrop { z-index: 92; }
+.drawer.qd-drawer { width: min(880px, 100vw); }
+.qd-drawer .drawer-head h2 { gap: 8px; }
+.qd-subtitle { display: grid; gap: 4px; margin-top: 4px; color: var(--muted); font-size: 13px; }
+.qd-subtitle b { color: var(--ink-2); }
+.qd-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.qd-shipment-link { display: inline-flex; align-items: center; gap: 4px; }
+.drawer-body.qd-body { display: grid; gap: 0; align-content: start; padding-top: 16px; }
+.qd-body > .callout { margin-bottom: 14px; }
+.qd-foot { gap: 8px; }
+.qd-status { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 6px; color: var(--ok); font-size: 12.5px; font-weight: 600; }
+.qd-status > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modal.qd-modal { width: min(560px, 100%); }
+
+/* ---------- Summary strip ---------- */
+.qd-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0 0 18px; }
+.qd-tile { display: grid; align-content: start; gap: 2px; min-height: 78px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); min-width: 0; }
+.qd-tile dt { font-size: 12px; font-weight: 600; color: var(--muted); }
+.qd-tile dd { margin: 0; font-family: var(--font-display); font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qd-tile small { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qd-tile-main { background: var(--brand-soft); border-color: #c6dcd7; }
+.qd-tile-main dd { color: var(--brand-ink); }
+.qd-tile.is-loss dd { color: var(--danger); }
+
+/* ---------- Sections ---------- */
+.qd-section { padding: 16px 0 18px; border-top: 1px solid var(--line); min-width: 0; }
+.qd-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 10px; }
+.qd-section-head h3 { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
+.qd-count { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--surface-3); color: var(--muted); font-size: 12px; font-weight: 700; }
+.qd-hint { margin: -4px 0 10px; color: var(--muted); font-size: 12.5px; max-width: 75ch; }
+.qd-empty { padding: 14px 16px; border: 1px dashed var(--line-strong); border-radius: var(--radius); color: var(--muted); font-size: 13px; background: var(--surface-2); }
+kbd { padding: 1px 6px; border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 4px; background: var(--surface); font: 600 11.5px var(--font); color: var(--ink-2); }
+
+/* ---------- Customer answer ---------- */
+.qd-email-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.qd-answer-line { margin-bottom: 12px; font-size: 13.5px; color: var(--ink-2); }
+.qd-answer-line.tone-approved { color: var(--ok); font-weight: 600; }
+.qd-answer-line.tone-declined { color: var(--danger); font-weight: 600; }
+.qd-answer-line.tone-expired { color: var(--warn); font-weight: 600; }
+.qd-answer-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.qd-why { margin-top: 8px; color: var(--warn); font-size: 12.5px; max-width: 75ch; }
+.qd-why.is-info { color: var(--muted); }
+.qd-ask { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; padding: 10px 12px; border: 1px solid var(--info-line); border-radius: var(--radius); background: var(--info-soft); color: var(--info); font-size: 13px; font-weight: 600; }
+.qd-ask > span { flex: 1; min-width: 180px; }
+.qd-shipment { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); font-size: 13px; }
+.qd-shipment > span { flex: 1; min-width: 200px; }
+.qd-shipment.is-new { border-color: var(--ok-line); background: var(--ok-soft); }
+
+/* ---------- Prices found ---------- */
+.qd-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+.qd-options, .qd-pallets { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13.5px; }
+.qd-options thead th, .qd-pallets thead th { padding: 8px 10px; background: var(--surface-2); border-bottom: 1px solid var(--line); text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.qd-options td, .qd-pallets td, .qd-pallets tbody th { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; text-align: left; }
+.qd-options tbody tr:last-child td, .qd-pallets tbody tr:last-child td, .qd-pallets tbody tr:last-child th { border-bottom: 0; }
+.qd-options .num, .qd-pallets .num { text-align: right; font-variant-numeric: tabular-nums; }
+.qd-options tr.is-selectable { cursor: pointer; }
+.qd-options tr.is-selectable:hover { background: #fafcfb; }
+.qd-options tr.is-used { background: var(--brand-soft); }
+.qd-options tr.is-used:hover { background: var(--brand-soft); }
+.qd-options tr.is-used td:first-child { box-shadow: inset 3px 0 0 var(--brand); }
+.qd-options input[type="radio"] { width: 16px; height: 16px; margin: 0; accent-color: var(--brand); cursor: pointer; }
+.qd-col-use { width: 52px; text-align: center !important; }
+.qd-col-price b { font-variant-numeric: tabular-nums; }
+.qd-lowest { display: block; color: var(--ok); font-size: 11.5px; font-weight: 600; }
+.qd-col-notes { max-width: 200px; color: var(--ink-2); font-size: 12.5px; overflow-wrap: anywhere; }
+.qd-col-actions { width: 84px; white-space: nowrap; text-align: right !important; }
+.qd-confirm { display: inline-flex; gap: 4px; }
+.qd-options tr.qd-editing td { padding: 12px; background: var(--surface-2); }
+
+.qd-add { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
+.qd-option-form { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px; align-items: end; }
+.qd-option-form .field > span { font-size: 12px; }
+.qd-f-source { grid-column: span 3; }
+.qd-f-carrier { grid-column: span 3; }
+.qd-f-price { grid-column: span 2; }
+.qd-f-transit { grid-column: span 2; }
+.qd-f-service { grid-column: span 2; }
+.qd-f-ref { grid-column: span 3; }
+.qd-f-expires { grid-column: span 2; }
+.qd-f-notes { grid-column: span 3; }
+.qd-f-actions { grid-column: span 4; display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.qd-f-price input { font-weight: 600; text-align: right; }
+.qd-f-problem { grid-column: 1 / -1; margin: -2px 0 0; }
+.chip-check.qd-use-check { min-height: 30px; font-size: 12.5px; }
+
+/* ---------- Customer price ---------- */
+.qd-price { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
+.qd-price-value { display: grid; gap: 4px; justify-items: start; min-width: 130px; }
+.qd-price-value strong { font-family: var(--font-display); font-size: 28px; font-weight: 700; line-height: 1.1; color: var(--brand-ink); font-variant-numeric: tabular-nums; }
+.qd-price-explain { flex: 1; min-width: 220px; display: grid; gap: 4px; font-size: 13.5px; padding-top: 4px; }
+.qd-calc { font-variant-numeric: tabular-nums; }
+.qd-margin b { color: var(--ok); }
+.qd-margin.is-loss b { color: var(--danger); }
+.qd-price-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.qd-price-form { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.qd-price-form .field { width: 180px; }
+
+/* ---------- Delivery terms ---------- */
+.qd-terms-fields { display: grid; gap: 12px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.qd-terms-place { display: grid; grid-template-columns: 120px minmax(0, 1fr) 80px; gap: 10px; max-width: 520px; }
+.qd-loc { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; justify-self: start; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-3); }
+.qd-loc-option { position: relative; display: inline-flex; align-items: center; height: 30px; padding: 0 14px; border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.qd-loc-option input { position: absolute; opacity: 0; pointer-events: none; }
+.qd-loc-option:hover { color: var(--brand-ink); background: rgba(255,255,255,.6); }
+.qd-loc-option.is-on { background: var(--surface); color: var(--brand-ink); box-shadow: var(--shadow-sm), 0 0 0 1px var(--line); }
+.qd-loc-option:has(input:focus-visible) { box-shadow: 0 0 0 3px var(--brand-ring); }
+.qd-terms-fields:disabled .qd-loc-option, .qd-terms-fields:disabled .chip-check { cursor: not-allowed; opacity: .65; }
+.qd-toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+.qd-terms-notes { max-width: 520px; }
+.qd-terms-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+/* ---------- Chips ---------- */
+.qd-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.qd-chip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.qd-chip-zip { background: var(--surface-3); border-color: transparent; font-variant-numeric: tabular-nums; }
+
+/* ---------- Pallets, history ---------- */
+.qd-pallet-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 10px; font-size: 13.5px; }
+.qd-pallets tbody th { font-weight: 600; white-space: nowrap; }
+.qd-history { padding-bottom: 4px; }
+.qd-disclosure { display: inline-flex; align-items: center; gap: 6px; padding: 4px 0; border: 0; background: none; font: 700 15px var(--font-display); color: var(--ink); }
+.qd-disclosure svg { transition: transform .15s; transform: rotate(-90deg); color: var(--muted); }
+.qd-disclosure[aria-expanded="true"] svg { transform: none; }
+.qd-history-body { margin-top: 12px; }
+
+/* ---------- Order drawer: quote history ---------- */
+.oq-panel { display: grid; gap: 12px; margin-bottom: 18px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface-2); }
+.oq-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
+.oq-head h3 { font-size: 15px; font-weight: 700; }
+.oq-head h3 small { margin-left: 6px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.oq-track { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); }
+.oq-track li { position: relative; display: grid; justify-items: center; gap: 4px; padding-top: 2px; text-align: center; font-size: 11.5px; font-weight: 600; color: var(--muted); line-height: 1.2; }
+.oq-track li::before { content: ""; position: absolute; top: 8px; left: -50%; width: 100%; height: 2px; background: var(--line-strong); z-index: 0; }
+.oq-track li:first-child::before { display: none; }
+.oq-track li.is-done::before, .oq-track li.is-current::before { background: var(--brand); }
+.oq-dot { position: relative; z-index: 1; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line-strong); background: var(--surface); }
+.oq-track li.is-done .oq-dot { border-color: var(--brand); background: var(--brand); }
+.oq-track li.is-current { color: var(--brand-ink); }
+.oq-track li.is-current .oq-dot { border-color: var(--brand); background: var(--surface); box-shadow: 0 0 0 4px var(--brand-ring); }
+.oq-track li.is-done { color: var(--ink-2); }
+.oq-track li.tone-danger { color: var(--danger); }
+.oq-track li.tone-danger .oq-dot { border-color: var(--danger); background: var(--danger-soft); box-shadow: none; }
+.oq-track li.tone-warn { color: var(--warn); }
+.oq-track li.tone-warn .oq-dot { border-color: var(--warn); background: var(--warn-soft); box-shadow: none; }
+.oq-track small { display: block; font-weight: 600; font-size: 11px; }
+.oq-now { display: none; margin-top: -4px; font-size: 12.5px; color: var(--ink-2); }
+.oq-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.oq-card { display: grid; gap: 6px; width: 100%; height: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); text-align: left; font-size: 13px; color: var(--ink); }
+.oq-card:hover { border-color: var(--brand); box-shadow: var(--shadow-sm); }
+.oq-card.is-approved { border-color: var(--ok-line); }
+.oq-card.is-draft { background: transparent; border-style: dashed; }
+.oq-card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.oq-card-top b { font-size: 13.5px; }
+.oq-card-top .badge { margin-left: auto; }
+.oq-time { display: inline-grid; place-items: center; min-width: 24px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--brand-soft); color: var(--brand-ink); font-size: 11.5px; font-weight: 700; }
+.oq-card-line { display: flex; flex-wrap: wrap; gap: 2px 10px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.oq-card-line .muted { font-size: 12.5px; }
+.oq-card-price { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 6px; border-top: 1px solid var(--line); }
+.oq-card-price b { font-variant-numeric: tabular-nums; }
+.oq-more { justify-self: start; }
+
+/* ---------- Quote History page ---------- */
+.qh-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.qh-filters select { height: 34px; font-size: 13px; font-weight: 600; }
+.qh-used { display: grid; gap: 1px; }
+.qh-used small { color: var(--muted); font-size: 12px; }
+.qh-terms { max-width: 260px; }
+.qh-table .data-table { min-width: 1080px; }
+.qh-nowrap { white-space: nowrap; }
+
+/* ---------- Broker notes in the broker panel ---------- */
+.bp-notes { list-style: none; margin: 0; padding: 10px 12px; display: grid; gap: 4px; border: 1px solid var(--warn-line); border-radius: var(--radius); background: var(--warn-soft); font-size: 12.5px; color: #5f3b05; }
+.bp-notes li { display: flex; gap: 6px; align-items: baseline; }
+.bp-notes li b { flex-shrink: 0; }
+.bp-notes svg { flex-shrink: 0; align-self: center; color: var(--warn); }
+
+/* ---------- Narrow screens ---------- */
+@media (max-width: 860px) {
+  .qd-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .qd-option-form { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .qd-f-source, .qd-f-carrier, .qd-f-ref, .qd-f-notes { grid-column: span 3; }
+  .qd-f-price, .qd-f-transit, .qd-f-service, .qd-f-expires { grid-column: span 3; }
+  .qd-f-actions { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  .qd-drawer .drawer-body { padding: 14px 16px 20px; }
+  .qd-drawer .drawer-head { padding: 14px 12px 12px 16px; }
+  .qd-drawer .drawer-foot { padding: 10px 16px; }
+  .qd-tile { min-height: 70px; padding: 8px 10px; }
+  .qd-tile dd { font-size: 18px; }
+  /* Price rows become cards: radio, source and price on top; details below. */
+  .qd-options thead { display: none; }
+  .qd-options, .qd-options tbody { display: block; }
+  .qd-options tr { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; grid-template-areas: "use source price" "use carrier transit" "use ref ref" "use notes actions"; align-items: center; column-gap: 8px; padding: 10px 10px 8px 6px; border-bottom: 1px solid var(--line); }
+  .qd-options tbody tr:last-child { border-bottom: 0; }
+  .qd-options td { padding: 0; border: 0; }
+  .qd-options td:empty { display: none; }
+  .qd-col-use { grid-area: use; width: auto; align-self: start; padding-top: 2px !important; }
+  .qd-col-source { grid-area: source; }
+  .qd-col-carrier { grid-area: carrier; }
+  .qd-col-transit { grid-area: transit; color: var(--muted); font-size: 12.5px; }
+  .qd-col-price { grid-area: price; }
+  .qd-col-ref { grid-area: ref; font-size: 12.5px; }
+  .qd-col-notes { grid-area: notes; max-width: none; }
+  .qd-col-actions { grid-area: actions; width: auto; }
+  .qd-options tr.is-used td:first-child { box-shadow: none; }
+  .qd-options tr.is-used { box-shadow: inset 3px 0 0 var(--brand); }
+  .qd-options tr.qd-editing { display: block; }
+  .qd-options tr.qd-editing td { display: block; }
+  .qd-option-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .qd-f-source, .qd-f-carrier, .qd-f-price, .qd-f-transit, .qd-f-service, .qd-f-ref, .qd-f-expires { grid-column: span 1; }
+  .qd-f-notes, .qd-f-actions { grid-column: 1 / -1; }
+  .qd-f-actions { justify-content: stretch; }
+  .qd-f-actions .btn-primary { flex: 1; height: 38px; }
+  .qd-terms-place { grid-template-columns: 96px minmax(0, 1fr) 64px; }
+  .qd-loc { display: flex; justify-self: stretch; }
+  .qd-loc-option { flex: 1; justify-content: center; padding: 0 8px; }
+  .qd-price-value strong { font-size: 24px; }
+  .oq-panel { padding: 12px; }
+  .oq-track .oq-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .oq-now { display: block; }
+  .oq-cards { grid-template-columns: minmax(0, 1fr); }
+}
+@media (pointer: coarse) {
+  .qd-loc-option { height: 38px; }
+  .qd-options input[type="radio"] { width: 20px; height: 20px; }
+}
+
+@media (max-width: 640px) {
+  .qd-options td.is-empty { display: none; }
+}
+
+/* Orders list: right-aligned stacked numbers */
+.cell-stack.num-stack { justify-items: end; }
+
+/* Recorded-quote card in the quote workspaces */
+.recorded-quote-prices { font-size: 12.5px; color: var(--ink-2); }
+.recorded-quote-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+p.bp-notes { display: flex; gap: 6px; align-items: baseline; }

@@ -1,0 +1,430 @@
+name: Desktop installer
+
+# Builds the Windows installer and the update package, runs the backend tests on the exact Python
+# runtime they ship, then on a clean Windows runner: installs, applies an update package without an
+# installer (from the launcher and from the app window), rolls it back, upgrades with the installer
+# over a running copy and uninstalls, checking that data and settings survive each step.
+# A "v*" tag also publishes a GitHub release with the installer and the update package.
+#
+# Optional repository secrets (the build stays unsigned and passes without them; docs/DEPLOYMENT.md):
+#   CODE_SIGNING_PFX_BASE64, CODE_SIGNING_PFX_PASSWORD          Authenticode certificate (.pfx)
+#   AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET,
+#   AZURE_SIGNING_ENDPOINT, AZURE_SIGNING_ACCOUNT, AZURE_SIGNING_PROFILE   Azure Artifact (Trusted) Signing
+#   UPDATE_SIGNING_KEY                                          Ed25519 key that signs update packages
+
+on:
+  push:
+    branches: [main, "feature/**"]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish a GitHub release v<release.json version> from this run (creates the tag on the run's commit)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Change these only on purpose: the runtime's python.exe/pythonw.exe (and every package binary)
+  # stay byte-identical between releases while they and desktop/requirements.lock are unchanged,
+  # so IT's approval of them carries over, and update packages can be used instead of the installer.
+  PYTHON_EMBED_VERSION: "3.13.16"
+  PYTHON_EMBED_SHA256: "97dae5274cc54867065e8d5a3226e48c35017ed332a0fdb0e27d5b5821961297"
+  ARTIFACT_SIGNING_CLIENT_VERSION: "1.0.128"
+  PYTHONUTF8: "1"
+
+jobs:
+  installer:
+    name: Build and test installer
+    runs-on: windows-latest
+    permissions:
+      contents: write  # publishing the release (tag push, or a manual run with "publish")
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check versions
+        id: version
+        run: |
+          python scripts/sync_release.py --check
+          $version = (Get-Content release.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") {
+            throw "Tag $env:GITHUB_REF_NAME does not match release.json version $version"
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Build interface
+        working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Build Build2Quote Bridge
+        working-directory: build2quote_bridge
+        run: |
+          # A node_modules link committed by mistake (checked out on Windows as a small file) stops
+          # pnpm install; dependencies are always installed fresh here.
+          if (Test-Path node_modules) {
+            $item = Get-Item node_modules -Force
+            if (-not $item.PSIsContainer -or $item.LinkType) { Remove-Item node_modules -Force }
+          }
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Download embeddable Python
+        run: |
+          $zip = "build\python-embed.zip"
+          New-Item -ItemType Directory -Force build | Out-Null
+          Invoke-WebRequest -UseBasicParsing -OutFile $zip `
+            -Uri "https://www.python.org/ftp/python/$env:PYTHON_EMBED_VERSION/python-$env:PYTHON_EMBED_VERSION-embed-amd64.zip"
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne $env:PYTHON_EMBED_SHA256) { throw "Embeddable Python checksum mismatch: $hash" }
+
+      - name: Assemble app folder
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          if ($env:UPDATE_SIGNING_KEY) {
+            python -m pip install --disable-pip-version-check cryptography==50.0.0
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+            "::notice title=Update packages::signed; installed copies will accept only update packages signed with this key"
+          } else {
+            "::notice title=Update packages::unsigned (no UPDATE_SIGNING_KEY secret)"
+          }
+          python scripts/build_desktop.py --out build\desktop --python-embed build\python-embed.zip --python-version $env:PYTHON_EMBED_VERSION
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          # Point the import check at a scratch database so nothing is created inside the app folder.
+          $env:QUOTE_HELPER_V2_DATABASE = Join-Path $env:RUNNER_TEMP 'import-check\check.sqlite3'
+          build\desktop\runtime\python.exe -c "import app.main, desktop_launcher, desktop_server, desktop_update; print('imports ok')"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          if (Test-Path build\desktop\app\data) { throw 'the import check created a data folder inside the app folder' }
+          build\desktop\runtime\python.exe -m compileall -q -j 0 build\desktop\app build\desktop\desktop build\desktop\runtime\Lib\site-packages
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          # What IT approves once: the PSF-signed interpreters, unchanged while PYTHON_EMBED_VERSION is.
+          foreach ($exe in @('python.exe', 'pythonw.exe') + @((Get-ChildItem build\desktop\runtime\python3*.dll).Name)) {
+            $signature = Get-AuthenticodeSignature "build\desktop\runtime\$exe"
+            if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Python Software Foundation') {
+              throw "$exe is not signed by the Python Software Foundation ($($signature.Status): $($signature.SignerCertificate.Subject))"
+            }
+          }
+          New-Item -ItemType Directory -Force build\update | Out-Null
+          $runtime = (Resolve-Path build\desktop\runtime).Path
+          Get-ChildItem $runtime -Recurse -File -Include *.exe, *.dll, *.pyd | Sort-Object FullName | ForEach-Object {
+            '{0}  runtime{1}' -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.FullName.Substring($runtime.Length)
+          } | Set-Content "build\update\ModernformQuoteHelperRuntime-${{ steps.version.outputs.version }}-SHA256.txt" -Encoding utf8NoBOM
+
+      - name: Backend tests on the shipped runtime
+        run: |
+          python -m pip install --disable-pip-version-check --target build\testdeps pytest==8.4.2 httpx==0.28.1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          build\desktop\runtime\python.exe -c "import sys; sys.path.insert(0, r'build\testdeps'); import pytest; sys.exit(pytest.main(['-p', 'no:cacheprovider', '-rfE', '--tb=short', '--junitxml=pytest-runtime.xml']))"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: Report failing tests
+        if: failure()
+        run: if (Test-Path pytest-runtime.xml) { python scripts/ci_annotate.py pytest-runtime.xml }
+
+      - name: Install Inno Setup
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup --no-progress -y; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe not found after installing Inno Setup" }
+          "ISCC=$iscc" >> $env:GITHUB_ENV
+
+      - name: Prepare code signing
+        env:
+          CODE_SIGNING_PFX_BASE64: ${{ secrets.CODE_SIGNING_PFX_BASE64 }}
+          CODE_SIGNING_PFX_PASSWORD: ${{ secrets.CODE_SIGNING_PFX_PASSWORD }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_SIGNING_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          AZURE_SIGNING_PROFILE: ${{ secrets.AZURE_SIGNING_PROFILE }}
+        run: |
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
+            Sort-Object { try { [version]$_.Directory.Parent.Name } catch { [version]'0.0' } } | Select-Object -Last 1
+          if (-not $signtool) { throw 'signtool.exe was not found in the Windows SDK' }
+          $signtool = $signtool.FullName
+          "SIGNTOOL=$signtool" >> $env:GITHUB_ENV
+          # Inno Setup's /S syntax: $q is a quote, $f the quoted file to sign.
+          $mode = 'none'
+          if ($env:CODE_SIGNING_PFX_BASE64) {
+            $mode = 'pfx'
+            $pfx = Join-Path $env:RUNNER_TEMP 'codesign.pfx'
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:CODE_SIGNING_PFX_BASE64))
+            $password = if ($env:CODE_SIGNING_PFX_PASSWORD) { ConvertTo-SecureString $env:CODE_SIGNING_PFX_PASSWORD -AsPlainText -Force } else { New-Object System.Security.SecureString }
+            $certificate = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password |
+              Where-Object HasPrivateKey | Select-Object -First 1
+            Remove-Item $pfx
+            if (-not $certificate) { throw 'CODE_SIGNING_PFX_BASE64 holds no certificate with a private key' }
+            $command = '$q' + $signtool + '$q sign /fd sha256 /sha1 ' + $certificate.Thumbprint + ' /tr http://timestamp.digicert.com /td sha256 /d $qModernform Quote Helper$q $f'
+          } elseif ($env:AZURE_CLIENT_ID -and $env:AZURE_SIGNING_ENDPOINT) {
+            $mode = 'azure'
+            $folder = Join-Path $env:RUNNER_TEMP 'artifact-signing'
+            Invoke-WebRequest -UseBasicParsing -OutFile "$folder.zip" `
+              -Uri "https://www.nuget.org/api/v2/package/Microsoft.ArtifactSigning.Client/$env:ARTIFACT_SIGNING_CLIENT_VERSION"
+            Expand-Archive "$folder.zip" -DestinationPath $folder
+            $dlib = Get-ChildItem $folder -Recurse -Filter Azure.CodeSigning.Dlib.dll | Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -First 1
+            if (-not $dlib) { throw 'Azure.CodeSigning.Dlib.dll (x64) not found in Microsoft.ArtifactSigning.Client' }
+            $metadata = Join-Path $env:RUNNER_TEMP 'artifact-signing.json'
+            @{
+              Endpoint = $env:AZURE_SIGNING_ENDPOINT; CodeSigningAccountName = $env:AZURE_SIGNING_ACCOUNT
+              CertificateProfileName = $env:AZURE_SIGNING_PROFILE
+              ExcludeCredentials = @('ManagedIdentityCredential', 'WorkloadIdentityCredential', 'SharedTokenCacheCredential',
+                'VisualStudioCredential', 'VisualStudioCodeCredential', 'AzureCliCredential', 'AzurePowerShellCredential',
+                'AzureDeveloperCliCredential', 'InteractiveBrowserCredential')
+            } | ConvertTo-Json | Set-Content $metadata -Encoding utf8NoBOM
+            $command = '$q' + $signtool + '$q sign /fd SHA256 /tr http://timestamp.acs.microsoft.com /td SHA256 /dlib $q' + $dlib.FullName + '$q /dmdf $q' + $metadata + '$q /d $qModernform Quote Helper$q $f'
+          }
+          "SIGN_MODE=$mode" >> $env:GITHUB_ENV
+          if ($mode -ne 'none') { "SIGN_COMMAND=$command" >> $env:GITHUB_ENV }
+          "::notice title=Code signing::$(if ($mode -eq 'none') { 'none: the installer is unsigned (no signing secrets)' } else { "installer and uninstaller signed ($mode)" })"
+          # A throwaway self-signed certificate signs the test-only installer, proving the signing
+          # plumbing (installer and uninstaller) on every run. It is never used for a published file.
+          $test = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=Modernform Quote Helper CI test signature (not trusted)' `
+            -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddDays(2)
+          "TEST_SIGN_THUMBPRINT=$($test.Thumbprint)" >> $env:GITHUB_ENV
+          ('TEST_SIGN_COMMAND=$q' + $signtool + '$q sign /fd sha256 /sha1 ' + $test.Thumbprint + ' $f') >> $env:GITHUB_ENV
+
+      - name: Build installers and update packages
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = "${{ steps.version.outputs.version }}"
+          $sign = if ($env:SIGN_MODE -ne 'none') { @('/DSign', "/Sqhsign=$env:SIGN_COMMAND") } else { @() }
+          & $env:ISCC /Q @sign "/DAppVersion=$version" "/DSourceDir=$PWD\build\desktop" "/DOutputDir=$PWD\build\installer" desktop\installer\QuoteHelper.iss
+          if ($LASTEXITCODE) { throw "ISCC failed with $LASTEXITCODE" }
+          if ($env:SIGN_MODE -ne 'none') {
+            $signature = Get-AuthenticodeSignature (Get-ChildItem build\installer\*.exe).FullName
+            if ($signature.Status -ne 'Valid') { throw "the installer signature is $($signature.Status): $($signature.StatusMessage)" }
+          }
+          python scripts/build_desktop.py --from-folder build\desktop --update-package "build\update\ModernformQuoteHelperUpdate-$version.zip"
+          if ($LASTEXITCODE) { throw "the update package could not be built" }
+
+          # A later version, used only to test updating: as an update package and as a (test-signed) installer.
+          Copy-Item build\desktop build\desktop-next -Recurse
+          $release = Get-Content build\desktop-next\app\release.json -Raw | ConvertFrom-Json
+          $release.version = "$version-ci.2"
+          $release | ConvertTo-Json | Set-Content build\desktop-next\app\release.json -Encoding utf8NoBOM
+          python scripts/build_desktop.py --from-folder build\desktop-next --update-package "build\update-next\ModernformQuoteHelperUpdate-$version-ci.2.zip"
+          if ($LASTEXITCODE) { throw "the test update package could not be built" }
+          & $env:ISCC /Q /DSign "/Sqhsign=$env:TEST_SIGN_COMMAND" "/DAppVersion=$version-ci.2" "/DSourceDir=$PWD\build\desktop-next" "/DOutputDir=$PWD\build\installer-next" desktop\installer\QuoteHelper.iss
+          if ($LASTEXITCODE) { throw "ISCC (test version) failed with $LASTEXITCODE" }
+          $signature = Get-AuthenticodeSignature (Get-ChildItem build\installer-next\*.exe).FullName
+          if ($signature.SignerCertificate.Thumbprint -ne $env:TEST_SIGN_THUMBPRINT) { throw 'the SignTool setting did not sign the test installer' }
+          Get-ChildItem build\update, build\update-next | Format-Table Name, Length
+
+      - name: Report build problems
+        if: failure()
+        run: |
+          Get-ChildItem build\installer*\*.log -ErrorAction SilentlyContinue | ForEach-Object {
+            Get-Content $_.FullName -Tail 20 | ForEach-Object { "::warning title=ISCC::$_" }
+          }
+
+      - name: Install, update without installer, roll back, upgrade over a running copy, uninstall
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $home_ = Join-Path $env:LOCALAPPDATA 'ModernformQuoteHelper'
+          trap {
+            "::error title=Install test::$($_.Exception.Message) (line $($_.InvocationInfo.ScriptLineNumber))"
+            Get-ChildItem $env:RUNNER_TEMP -Filter 'setup-*.log' | ForEach-Object {
+              Get-Content $_.FullName | Select-String -Pattern 'error|fail|Exec|PrepareToInstall|close|in use|Restart' |
+                Select-Object -Last 25 | ForEach-Object { "::warning title=$($_.Filename)::$($_.Line)" }
+            }
+            foreach ($name in 'run\update-result.json', 'logs\update.log') {
+              $file = Join-Path $home_ $name
+              if (Test-Path $file) { Get-Content $file -Tail 30 | ForEach-Object { "::warning title=$name::$_" } }
+            }
+            break
+          }
+          $version = "${{ steps.version.outputs.version }}"
+          $next = "$version-ci.2"
+          $data = Join-Path $env:RUNNER_TEMP 'Quote Helper Data'   # a path with spaces, like OneDrive
+          $app = Join-Path $env:LOCALAPPDATA 'Programs\Modernform Quote Helper'
+          $config = Join-Path $home_ 'config.json'
+          $updates = Join-Path $home_ 'updates'
+          $python = Join-Path $app 'runtime\python.exe'
+          $launcher = Join-Path $app 'desktop\launcher.pyw'
+          $base = 'http://127.0.0.1:8030'
+
+          function Run-Setup($exe, $extra) {
+            $process = Start-Process -FilePath $exe -Wait -PassThru `
+              -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=`"$env:RUNNER_TEMP\setup-$(Get-Random).log`" $extra"
+            if ($process.ExitCode -ne 0) { throw "$exe exited with $($process.ExitCode)" }
+          }
+          function Launch($arguments) {
+            $output = & $python $launcher @arguments
+            $code = $LASTEXITCODE
+            $output | Write-Host
+            if ($code) { Get-Content (Join-Path $home_ 'logs\server.log') -Tail 40; throw "launcher $arguments failed: $($output -join ' ')" }
+            return ($output -join "`n")
+          }
+          function Health { Invoke-RestMethod -Uri "$base/api/health" -TimeoutSec 5 }
+          function Order-Kept($label) {
+            $kept = Invoke-RestMethod -Uri "$base/api/orders/$($order.id)"
+            if ($kept.order.order_number -ne $order.order_number) { throw "the order created at the start is missing $label" }
+          }
+          function Update-Backups { @(Get-ChildItem (Join-Path $data 'backups') -Filter "quote-helper-v2-before-update-$next-*.sqlite3").Count }
+          function Executables {   # every native file in the program folder, with its hash
+            Get-ChildItem $app -Recurse -File -Include *.exe, *.dll, *.pyd |
+              Where-Object { $_.FullName -notlike "$app\previous\*" -and $_.FullName -notlike "$app\update-work\*" } |
+              ForEach-Object { "$($_.FullName.Substring($app.Length))=$((Get-FileHash $_.FullName).Hash)" } | Sort-Object
+          }
+          function Expect-Refused($headers, $label) {
+            try {
+              Invoke-WebRequest -UseBasicParsing -Method Post -Uri "$base/__desktop/apply-update" -Headers $headers -ContentType 'application/json' -Body '{}' | Out-Null
+            } catch [Microsoft.PowerShell.Commands.HttpResponseException] {
+              if ($_.Exception.Response.StatusCode.value__ -eq 403) { return }
+              throw "$label answered $($_.Exception.Response.StatusCode.value__), expected 403"
+            }
+            throw "$label was accepted"
+          }
+
+          # 1. First install, choosing the data folder.
+          Run-Setup (Get-ChildItem build\installer\*.exe).FullName "/DATADIR=`"$data`""
+          $settings = Get-Content $config -Raw | ConvertFrom-Json
+          if ($settings.data_dir -ne $data) { throw "config.json data_dir is '$($settings.data_dir)', expected '$data'" }
+          if (-not (Test-Path $updates)) { throw 'the installer did not create the updates folder' }
+          Launch @('--no-window') | Out-Null
+          if ((Health).version -ne $version) { throw "health reports $((Health).version)" }
+          if (-not (Test-Path (Join-Path $data 'quote_helper_v2.sqlite3'))) { throw 'database not created in the data folder' }
+          $order = Invoke-RestMethod -Method Post -Uri "$base/api/orders" -ContentType 'application/json' `
+            -Body '{"order_number": "CI-UPGRADE-1", "lines": []}'
+          $configHash = (Get-FileHash $config).Hash
+          $executables = Executables
+
+          # 2. Update package, applied by the launcher: no installer, no new executable.
+          $package = Join-Path $updates (Get-Item build\update-next\*.zip).Name
+          Copy-Item (Get-Item build\update-next\*.zip).FullName $package
+          $found = (Launch @('--check-updates')) | ConvertFrom-Json
+          if ($found.available.version -ne $next -or -not $found.available.can_apply) { throw "--check-updates found: $($found.available | ConvertTo-Json -Compress)" }
+          $status = Invoke-RestMethod -Uri "$base/__desktop/update-status"
+          if ($status.available.version -ne $next -or $status.installed_version -ne $version) { throw "update-status: $($status | ConvertTo-Json -Compress -Depth 4)" }
+          Expect-Refused @{ 'X-Quote-Helper' = '1'; Origin = 'http://evil.example' } 'a cross-site apply request'
+          Expect-Refused @{ Origin = $base } 'an apply request without X-Quote-Helper'
+          Launch @('--apply-update', $package, '--no-window') | Out-Null
+          if ((Health).version -ne $next) { throw "after the update package, health reports $((Health).version)" }
+          Order-Kept 'after the update package'
+          if ((Get-FileHash $config).Hash -ne $configHash) { throw 'the update package changed config.json' }
+          if ((Update-Backups) -lt 1) { throw 'no pre-update backup was made for the update package' }
+          $changed = Compare-Object $executables (Executables)
+          if ($changed) { throw "the update package changed native files: $($changed | Out-String)" }
+          if ((Get-Content (Join-Path $app 'previous\app\release.json') -Raw | ConvertFrom-Json).version -ne $version) { throw 'the previous version was not kept' }
+          $result = Get-Content (Join-Path $home_ 'run\update-result.json') -Raw | ConvertFrom-Json
+          if (-not $result.ok -or $result.to_version -ne $next) { throw "update result: $($result | ConvertTo-Json -Compress)" }
+
+          # 3. Roll back to the version the update replaced.
+          Launch @('--rollback-update', '--no-window') | Out-Null
+          if ((Health).version -ne $version) { throw "after --rollback-update, health reports $((Health).version)" }
+          Order-Kept 'after the rollback'
+
+          # 4. "Install now" in the app window: a same-origin POST; the launcher runs detached and restarts it.
+          $answer = Invoke-RestMethod -Method Post -Uri "$base/__desktop/apply-update" -ContentType 'application/json' `
+            -Headers @{ 'X-Quote-Helper' = '1'; Origin = $base } -Body (@{ version = $next } | ConvertTo-Json)
+          if ($answer.status -ne 'updating') { throw "apply-update answered $($answer | ConvertTo-Json -Compress)" }
+          $deadline = (Get-Date).AddMinutes(4)
+          do {
+            Start-Sleep -Seconds 2
+            try { $now = (Health).version } catch { $now = $null }
+          } while ($now -ne $next -and (Get-Date) -lt $deadline)
+          if ($now -ne $next) { throw "the in-app update did not finish (health: $now)" }
+          Order-Kept 'after the in-app update'
+          Launch @('--rollback-update', '--no-window') | Out-Null
+          if ((Health).version -ne $version) { throw "after the second rollback, health reports $((Health).version)" }
+          if ((Get-FileHash $config).Hash -ne $configHash) { throw 'updating and rolling back changed config.json' }
+
+          # 5. Upgrade with the installer while it is running: it must stop it, keep data and settings.
+          $backupsBefore = Update-Backups
+          Run-Setup (Get-ChildItem build\installer-next\*.exe).FullName ''
+          try { Health | Out-Null; throw 'the old server was still running after the upgrade' } catch [System.Net.Http.HttpRequestException] { }
+          if ((Get-FileHash $config).Hash -ne $configHash) { throw 'the upgrade changed config.json' }
+          if (Test-Path (Join-Path $app 'previous')) { throw 'the installer left the previous update-package version behind' }
+          if ((Get-AuthenticodeSignature (Join-Path $app 'unins000.exe')).SignerCertificate.Thumbprint -ne $env:TEST_SIGN_THUMBPRINT) {
+            throw 'SignedUninstaller did not sign the uninstaller'
+          }
+          Launch @('--no-window') | Out-Null
+          if ((Health).version -ne $next) { throw "after upgrade health reports $((Health).version)" }
+          Order-Kept 'after the installer upgrade'
+          $found = Invoke-RestMethod -Uri "$base/api/orders?search=CI-UPGRADE-1"
+          if (-not ($found | Where-Object { $_.id -eq $order.id })) { throw 'searching for the order does not find it' }
+          if ((Update-Backups) -le $backupsBefore) { throw 'no pre-update backup was made by the installer upgrade' }
+          & $python $launcher --status
+          Launch @('--stop') | Out-Null
+          try { Health | Out-Null; throw 'server still running after --stop' } catch [System.Net.Http.HttpRequestException] { }
+
+          # 6. Uninstall: program files go, data and settings stay.
+          $process = Start-Process -FilePath (Join-Path $app 'unins000.exe') -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "uninstall exited with $($process.ExitCode)" }
+          Start-Sleep -Seconds 3   # the uninstaller finishes removing itself after it exits
+          if (Test-Path (Join-Path $app 'runtime')) { throw 'uninstall left the program files' }
+          if (Test-Path (Join-Path $app 'update-work')) { throw 'uninstall left update-work' }
+          if (-not (Test-Path (Join-Path $data 'quote_helper_v2.sqlite3'))) { throw 'uninstall removed the database' }
+          if (-not (Test-Path $config)) { throw 'uninstall removed config.json' }
+          Write-Host "Install, update package, rollback, in-app update, installer upgrade and uninstall checks passed."
+
+      - name: Server log
+        if: failure()
+        run: |
+          $log = Join-Path $env:LOCALAPPDATA 'ModernformQuoteHelper\logs\server.log'
+          if (Test-Path $log) { Get-Content $log -Tail 80 | ForEach-Object { "::warning title=server.log::$_" } }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ModernformQuoteHelperSetup-${{ steps.version.outputs.version }}
+          path: build/installer/*.exe
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ModernformQuoteHelperUpdate-${{ steps.version.outputs.version }}
+          path: build/update/*
+          if-no-files-found: error
+
+      - name: Publish release
+        # On a v* tag, or on a manual run with "publish" ticked (from main only), which makes the tag.
+        if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $notes = @"
+          First installation: run ModernformQuoteHelperSetup-$version.exe.
+          Already installed: put ModernformQuoteHelperUpdate-$version.zip in the updates folder (Start menu > Modernform Quote Helper Tools > Updates folder) and click Install now in Modernform Quote Helper. It replaces only the app's own files (no installer, no new program files). If Modernform Quote Helper says the update needs the full installer, run ModernformQuoteHelperSetup-$version.exe instead.
+          Your data folder and settings are kept; the database is backed up before the new version first opens it.
+          ModernformQuoteHelperRuntime-$version-SHA256.txt lists the SHA-256 of every program file in the bundled Python runtime.
+          "@
+          $files = @((Get-ChildItem build\installer\*.exe).FullName) + @((Get-ChildItem build\update\*).FullName)
+          $tag = "v$version"
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            # Release already exists (e.g. drafted on github.com): attach or replace the files.
+            gh release upload $tag @files --clobber
+          } else {
+            gh release create $tag @files --target $env:GITHUB_SHA --title "Modernform Quote Helper $version" --notes $notes
+          }
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }

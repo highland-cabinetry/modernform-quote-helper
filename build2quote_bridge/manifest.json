@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Modernform Build2Quote Bridge",
+  "version": "1.0.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxDg23JT4+5e6bjzPC2ZgGuF72L1oOl2mRRep/LqSm/qFwkqIgo+wwGx/RysL2ERfu+oebLOvMntMxWuyD87uCGv7tkBMHkXQ1bTy1vv3Oh0w53EgSDcL4A8abQIzzZ15BqULEVt0/jgemNMrh6w8RNLs+zwcPDz+ljH+o0wfx6iI+W2Q+1l5frqAazdQDFiPrca0jDOMntznB1euLM+Ehq+4IBokFqlCeLQyUytTjuoLZZxvkCJ9QZ4M38Rop5GFasdCi/7zVtZkWSzYbBSQY/ms7twoCFkk2BipSVZky1qhnY2ytsekuQbryuMAvLEERUqxajfkOMNS362QaE0CNQIDAQAB",
+  "description": "Locally fills and verifies LTL quote forms from Modernform Quote Helper without booking shipments.",
+  "action": { "default_title": "Modernform Build2Quote Bridge" },
+  "permissions": ["storage", "tabs", "alarms"],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "https://echoship.com/*",
+    "https://trax.tqlapp.com/*",
+    "https://trax.tql.com/*",
+    "https://mytms.us.dsv.com/*",
+    "https://www.myunishippers.com/*",
+    "https://myunishippers.com/*",
+    "https://www.odfl.com/*",
+    "https://*.b2clogin.com/*",
+    "https://login.microsoftonline.com/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "externally_connectable": {
+    "matches": ["http://127.0.0.1/*", "http://localhost/*"]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://echoship.com/*",
+        "https://trax.tqlapp.com/*",
+        "https://trax.tql.com/*",
+        "https://mytms.us.dsv.com/*",
+        "https://www.myunishippers.com/*",
+        "https://myunishippers.com/*",
+        "https://www.odfl.com/*",
+        "https://*.b2clogin.com/*",
+        "https://login.microsoftonline.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

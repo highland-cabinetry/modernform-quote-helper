@@ -1,0 +1,42 @@
+<form>
+  <input id="shipmentDate" name="shipmentDate" value="8/26/2026">
+  <div id="pickup-details">
+    <h4>Pickup</h4>
+    <input id="pickup-postal" role="combobox" placeholder="Postal Code, City, or Saved Address" aria-owns="pickup-list" value="80011 - Aurora, CO, USA">
+    <div id="pickup-list" role="listbox"><div role="option">80011 - Aurora, CO, USA</div></div>
+  </div>
+  <div id="delivery-details">
+    <h4>Delivery</h4>
+    <input id="delivery-postal" role="combobox" placeholder="Postal Code, City, or Saved Address" aria-owns="delivery-list">
+    <div id="delivery-list" role="listbox"><div role="option">59714 - Belgrade, MT, USA</div></div>
+    <input type="radio" id="delivery-commercial" name="delivery-location-type"><label for="delivery-commercial" aria-label="Commercial">Commercial</label>
+    <input type="radio" id="delivery-residential" name="delivery-location-type"><label for="delivery-residential" aria-label="Residential">Residential</label>
+    <input type="checkbox" id="delivery-liftgate" aria-label="Lift Gate">
+  </div>
+  <div id="add-item">
+    <div class="commodity-row" data-row="1">
+      <input name="quantity" id="input-quantity-1">
+      <span id="input-unit-1" role="combobox" aria-owns="input-unit-1-listbox-id"><span class="k-input-value-text">Pallets</span></span>
+      <select aria-label="Unit"><option value="6" selected>Pallets</option></select>
+      <input name="weight" id="input-weight-1">
+      <input name="length" id="input-length-1">
+      <input name="width" id="input-width-1">
+      <input name="height" id="input-height-1">
+      <input name="description" id="input-description-1">
+      <span id="input-class-1" role="combobox" aria-owns="input-class-1-listbox-id"><span class="k-input-value-text"></span></span>
+      <select aria-label="Class"><option value="__clear__" selected></option><option value="5">70</option><option value="8">92.5</option></select>
+      <input name="nmfc" id="input-nmfc-1">
+      <input type="checkbox" name="stackable" id="stackable-checkbox-1" checked>
+      <div data-testid="input-field-group-density-1"><span class="display-field"></span></div>
+      <div data-testid="input-field-group-estClass-1"><span class="display-field"></span></div>
+    </div>
+    <button type="button" id="add-handling-unit">Handling Unit</button>
+  </div>
+  <div data-summary-field="handling-unit"><div>Handling Unit</div><div class="item-summary-value"></div></div>
+  <div data-summary-field="total-unit-weight"><div>Total Unit Weight</div><div class="item-summary-value"></div></div>
+  <div data-summary-field="calculated-linear-feet"><div>Calculated Linear Feet</div><div class="item-summary-value"></div></div>
+  <div id="input-unit-1-listbox-id" role="listbox"><div role="option">Pallets</div></div>
+  <div id="input-class-1-listbox-id" role="listbox"><div role="option">70</div><div role="option">92.5</div></div>
+  <input id="customerReference">
+  <button type="button" id="get-quote">Get Quote</button>
+</form>

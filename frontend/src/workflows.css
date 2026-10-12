@@ -1,0 +1,28 @@
+.workflow-page { max-width:1600px; margin:0 auto; padding:32px; color:var(--navy,#173346); }
+.workflow-panel { padding:24px; margin:20px 0; }
+.workflow-panel h2 { margin:0 0 12px; font-size:18px; }
+.workflow-panel p { line-height:1.6; }
+.workflow-table { overflow:auto; margin:20px 0; }
+.workflow-table table { width:100%; border-collapse:collapse; }
+.workflow-table th,.workflow-table td { padding:10px; text-align:left; border-bottom:1px solid #dce4e8; }
+.workflow-table input { width:100%; min-width:78px; max-width:140px; }
+.workflow-panel input:not([type=checkbox]),.workflow-panel select,.workflow-panel textarea { padding:9px; border:1px solid #b9cbd3; border-radius:4px; background:white; color:#173346; }
+.workflow-table small { display:block; margin-top:5px; }
+.workflow-panel label { display:flex; flex-direction:column; gap:6px; }
+.workflow-panel label:has(input[type=checkbox]) { flex-direction:row; align-items:center; }
+.workflow-error { color:#a62b26; }
+.workflow-panel .secondary-button { margin:4px; }
+.broker-progress { display:flex; flex-wrap:wrap; gap:12px; margin:0 32px 24px; }
+.broker-chip { background:#fff; border:1px solid #b9cbd3; border-radius:6px; padding:8px 12px; max-width:320px; align-self:flex-start; }
+.broker-chip summary { cursor:pointer; display:flex; gap:12px; align-items:center; font-size:12px; }
+.broker-chip summary span { color:#536b79; }
+.broker-chip.success summary span { color:#208054; }
+.broker-chip small { display:block; margin-top:8px; }
+.lab-comparison { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.lab-viewer { height:400px; position:relative; margin-top:16px; border:1px solid #c8d4d9; }
+.lab-banner { border-left:4px solid #ce8b18; padding:14px; background:#fff7e5; }
+.lab-metrics { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.lab-metrics>span { background:#f0f5f5; padding:10px; }
+.workflow-panel details { margin:14px 0; }
+.workflow-panel pre { white-space:pre-wrap; max-height:320px; overflow:auto; font-size:11px; }
+@media(max-width:900px) { .lab-comparison { grid-template-columns:1fr; } .workflow-page { padding:16px; } }

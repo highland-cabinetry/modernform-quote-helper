@@ -1,0 +1,7 @@
+{
+  "version": "1.0.0",
+  "minimum_bridge_version": "1.0.0",
+  "production_engine_version": "3.3.0",
+  "edition": "modernform",
+  "upstream": "highland-cabinetry/freight-manager@91a9437 (Quote Helper 3.2.0)"
+}

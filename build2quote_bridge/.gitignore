@@ -1,0 +1,3 @@
+# A symlinked node_modules is a file to Git, so the root "node_modules/" rule misses it.
+node_modules
+dist

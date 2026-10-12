@@ -1,0 +1,39 @@
+<form>
+  <div class="row" id="dsv-pickup-row">
+    <label>Pickup ZIP<input id="dsv-pickup" class="ng-valid" role="searchbox" aria-autocomplete="list" value="80011"></label>
+  </div>
+  <div class="row" id="dsv-delivery-row">
+    <label>Delivery ZIP<input id="dsv-delivery" class="ng-valid" role="searchbox" aria-autocomplete="list"></label>
+  </div>
+  <label>Residential delivery<input type="checkbox" value="DELIVERY_RESIDENTIAL"></label>
+  <label>Liftgate delivery<input type="checkbox" value="DELIVERY_LIFTGATE"></label>
+  <section id="dsv-goods">
+    <div class="dsv-goods-row">
+      <label>Description<input formcontrolname="description"></label>
+      <label>NMFC<input formcontrolname="nmfcCode"></label>
+      <p-inputnumber formcontrolname="weight"><label>Weight<input></label></p-inputnumber>
+      <label>Packages<input formcontrolname="totalPackages"></label>
+      <label>Length<input formcontrolname="length"></label>
+      <label>Width<input formcontrolname="width"></label>
+      <label>Height<input formcontrolname="height"></label>
+      <p-dropdown formcontrolname="packaging"><button type="button" class="p-dropdown"><span class="p-dropdown-label"></span></button></p-dropdown>
+      <p-dropdown formcontrolname="weightUnits"><button type="button" class="p-dropdown"><span class="p-dropdown-label"></span></button></p-dropdown>
+      <p-dropdown formcontrolname="dimensionUnits"><button type="button" class="p-dropdown"><span class="p-dropdown-label"></span></button></p-dropdown>
+      <p-dropdown formcontrolname="freightClass"><button type="button" class="p-dropdown"><span class="p-dropdown-label"></span></button></p-dropdown>
+      <p-checkbox formcontrolname="stackable"><label>Stackable<input type="checkbox" checked></label></p-checkbox>
+    </div>
+  </section>
+  <button type="button" id="dsv-add-item">Add Item</button>
+  <button type="button" id="dsv-get-rates">Get Rates</button>
+  <div id="dsv-options">
+    <button type="button" role="option">Pallets</button>
+    <button type="button" role="option">lb</button>
+    <button type="button" role="option">in</button>
+    <button type="button" role="option">70</button>
+    <button type="button" role="option">92.5</button>
+  </div>
+</form>
+<div id="dsv-postal-overlay" class="p-autocomplete-panel" role="listbox">
+  <button type="button" role="option">80011 Aurora CO</button>
+  <button type="button" role="option">59714 Belgrade MT</button>
+</div>
