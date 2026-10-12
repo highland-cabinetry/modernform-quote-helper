@@ -13,13 +13,17 @@ upstream fixes (packing engine, validator, importer, Bridge, installer) can be b
 | Product rules: door-style prefixes, shortened codes, named trash kits | `services/company_rules.py` (`modernform`), `services/sku_matching.py` |
 | Packing slip + invoice of one order are the same goods | `services/order_import.py` (`same_goods_allowing_short_codes`) |
 | *Assemble* column on packing slips | `services/imports.py` (header alias) |
-| Pallet engine 3.3.0: several PC/OC pantry pairs stacked on one long deck ("stacked" mode) | `backend/app/packing/stack_planner.py` (`place_pair_batch`) |
+| Pallet engine 3.3.0: several PC/OC pantry pairs stacked on one long deck ("stacked" mode); a nearly empty last pallet spread over the others | `backend/app/packing/stack_planner.py` (`place_pair_batch`, `_absorb_runt`), `docs/STACK_PLANNER.md` |
+| *Get quotes* for all brokers opens every broker that can quote; one that cannot (Old Dominion's 96 in pallet limit) is reported instead of blocking the rest | `services/broker_handoff.py` (`prepare_many(skipped=...)`), `main.py` prepare-all |
+| Product catalog in the simple item-list workbook (Cabinet Colors + Item References); imports change only the workbook's columns; Cabinet colors list in settings | `services/reports.py` (`simple_catalog_xlsx`), `services/catalog.py`, `models.py` (`CabinetColor`), `pages/Catalog.jsx` |
 | Hidden freight workflow (shipments, approvals, emails, reps, dashboard, reports) | `frontend/src/edition.js` (`FEATURES.freightWorkflow`) |
 | Removed: Freight Manager workbook import | `api_fm_import.py`, `services/freight_manager_import.py` and their tests/docs |
 | Separate install identity: name, AppId, program/settings folders, ports 8030–8039, update package names and product, Bridge name and extension key/ID | `desktop/`, `desktop/installer/`, `build2quote_bridge/manifest.json`, `BUILD2QUOTE_EXTENSION_ID` in `backend/app/main.py` and `frontend/src/build2quote.js` |
 
-The pallet-engine change and the shortened-code matching would help Highland's app too; they are
-written so the upstream behaviour is unchanged unless the new mode or rule set is used.
+The engine 3.3 changes and the "Get quotes" change would help Highland's app too. On Highland's 70
+distinct saved requests the 3.3 engine never plans more pallets or errors than 3.2 (9 plans change, each
+to a smaller deck mix, fewer load boards or a lower maximum height). The ModernForm matching rules only
+apply with the `modernform` rule set.
 
 ## Bringing over an upstream change
 
