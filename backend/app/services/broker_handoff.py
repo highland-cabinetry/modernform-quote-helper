@@ -297,11 +297,26 @@ class BrokerHandoffManager:
         *,
         bridge_origin: str,
         replace_active: bool = False,
+        skipped: list[dict] | None = None,
     ) -> list[dict]:
-        """Stage one immutable packet; a failed commit preserves existing sessions."""
+        """Stage one immutable packet; a failed commit preserves existing sessions.
+
+        With a ``skipped`` list, a broker that cannot quote this shipment (for example Old Dominion's
+        96 in pallet limit) is left out and reported there instead of stopping every broker.
+        """
         preview = self.preview(result)
         staged = BrokerHandoffManager()
-        launches = [staged.prepare(broker, result, bridge_origin=bridge_origin, _preview=preview) for broker in brokers]
+        launches = []
+        for broker in brokers:
+            try:
+                launches.append(staged.prepare(broker, result, bridge_origin=bridge_origin, _preview=preview))
+            except ValueError as exc:
+                if skipped is None or not preview["ready"]:
+                    raise
+                skipped.append({"broker": broker, "reason": str(exc)})
+        if not launches:
+            raise ValueError("; ".join(entry["reason"] for entry in skipped or []) or "No broker can quote this.")
+        brokers = tuple(launch["broker"] for launch in launches)
         sessions = list(staged._sessions.values())
         now = datetime.now(UTC)
         with self._lock:

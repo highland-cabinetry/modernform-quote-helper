@@ -200,6 +200,7 @@ export default function QuickQuote({ settings, onDefaults, quoteId, openToken, b
         }
         if (launchPrepared) await launchPrepared(response.handoffs, result);
         else response.handoffs.forEach(session => onPrepared?.(session.broker, { ...session, shipment_name: result.shipment_name, source_revision: result.revision }));
+        if (response.skipped?.length) setNotice(`Not opened: ${response.skipped.map((entry) => entry.reason).join(" ")}`);
       }
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   }

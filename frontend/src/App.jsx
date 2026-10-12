@@ -694,7 +694,8 @@ export default function App({ mode = "builder", company = null, context = null, 
         response = await prepare(true);
       }
       await launchPrepared(response.handoffs, saved);
-      setNotice(`${broker === "all" ? "All broker tabs" : broker.toUpperCase()} opened beside ${APP_NAME}. Sign in where needed; autofill will resume automatically.`);
+      const skipped = (response.skipped || []).map((entry) => entry.reason).join(" ");
+      setNotice(`${broker === "all" ? (skipped ? "The other broker tabs" : "All broker tabs") : broker.toUpperCase()} opened beside ${APP_NAME}. Sign in where needed; autofill will resume automatically.${skipped ? ` Not opened: ${skipped}` : ""}`);
     } catch (requestError) {
       setError(requestError.message);
     } finally {

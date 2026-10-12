@@ -387,16 +387,17 @@ def prepare_all_quote_handoffs(payload: QuoteHandoffRequest, request: Request) -
     result = _quote_source(payload)
     if not result:
         raise HTTPException(status_code=404, detail="Saved shipment not found")
+    skipped: list[dict] = []
     try:
-        return {
-            "handoffs": broker_handoffs.prepare_many(
-                ("echoship", "tql", "dsv", "myunishippers", "odfl"),
-                result,
-                repository.save_quote_snapshots,
-                bridge_origin=str(request.base_url).rstrip("/"),
-                replace_active=payload.replace_active,
-            )
-        }
+        handoffs = broker_handoffs.prepare_many(
+            ("echoship", "tql", "dsv", "myunishippers", "odfl"),
+            result,
+            repository.save_quote_snapshots,
+            bridge_origin=str(request.base_url).rstrip("/"),
+            replace_active=payload.replace_active,
+            skipped=skipped,
+        )
+        return {"handoffs": handoffs, "skipped": skipped}
     except ActiveHandoffConflict as exc:
         raise HTTPException(
             status_code=409,

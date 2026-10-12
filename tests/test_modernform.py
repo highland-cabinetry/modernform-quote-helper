@@ -265,14 +265,19 @@ def test_import_both_documents_pack_and_prepare_every_broker(client, repo):
     assert launches.status_code == 200, launches.text
     handoffs = launches.json()["handoffs"]
     try:
-        check_packet(client, plan, handoffs)
+        check_packet(client, plan, handoffs, launches.json()["skipped"])
     finally:   # handoffs live in the app process; leave none active for other tests
         for handoff in handoffs:
             client.post(f"/api/quote-handoffs/{handoff['request_id']}/cancel")
 
 
-def check_packet(client, plan, handoffs):
-    assert {handoff["broker"] for handoff in handoffs} == {"echoship", "tql", "dsv", "myunishippers", "odfl"}
+def check_packet(client, plan, handoffs, skipped):
+    # Every broker opens, except one that cannot take this shipment (Old Dominion: pallets over 96 in
+    # long), which is reported instead of stopping the others.
+    assert {handoff["broker"] for handoff in handoffs} | {entry["broker"] for entry in skipped} == {
+        "echoship", "tql", "dsv", "myunishippers", "odfl"}
+    assert {"echoship", "tql", "dsv", "myunishippers"} <= {handoff["broker"] for handoff in handoffs}
+    assert all(entry["broker"] == "odfl" and "96" in entry["reason"] for entry in skipped)
 
     # The Modernform Bridge (its own extension ID) can read the packet; another extension cannot.
     fragment = urlsplit(handoffs[0]["url"]).fragment.split("build2quote=", 1)[1]
