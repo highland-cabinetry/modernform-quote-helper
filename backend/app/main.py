@@ -390,7 +390,7 @@ def prepare_all_quote_handoffs(payload: QuoteHandoffRequest, request: Request) -
     skipped: list[dict] = []
     try:
         handoffs = broker_handoffs.prepare_many(
-            ("echoship", "tql", "dsv", "myunishippers", "odfl"),
+            current_edition().brokers,
             result,
             repository.save_quote_snapshots,
             bridge_origin=str(request.base_url).rstrip("/"),
@@ -409,6 +409,9 @@ def prepare_all_quote_handoffs(payload: QuoteHandoffRequest, request: Request) -
 
 @app.post("/api/quote-handoffs/{broker}/prepare")
 def prepare_quote_handoff(broker: BrokerName, payload: QuoteHandoffRequest, request: Request) -> dict:
+    if broker not in current_edition().brokers:
+        raise HTTPException(status_code=422,
+                            detail=f"Quoting with {broker} is turned off in {current_edition().app_name}.")
     result = _quote_source(payload)
     if not result:
         raise HTTPException(status_code=404, detail="Saved shipment not found")

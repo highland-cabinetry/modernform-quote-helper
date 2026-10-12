@@ -9,7 +9,7 @@ import { getJson, sendJson } from "./api";
 
 vi.mock("./api", () => ({ getJson: vi.fn(), sendJson: vi.fn() }));
 // These tests cover the full freight workflow (customer answers, approval → shipment).
-vi.mock("./edition", async (importOriginal) => ({ ...(await importOriginal()), FEATURES: { freightWorkflow: true } }));
+vi.mock("./edition", async (importOriginal) => ({ ...(await importOriginal()), FEATURES: { freightWorkflow: true }, brokerEnabled: () => true }));
 
 const RULE = { markup_percent: 0, markup_fixed_cents: 0, round_up_to_cents: 500, minimum_cents: 0 };
 const option = (id, source, carrier, price_cents, extra = {}) => ({

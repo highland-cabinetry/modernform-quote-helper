@@ -3,7 +3,8 @@
 Modernform Quote Helper turns ModernForm Cabinets & Closet invoices and packing slips into auditable pallet
 plans and LTL freight quotes. It reads the PDF, matches every line to the product catalog, plans the
 pallets (sizes, weights, heights, freight class per pallet) and fills the broker quote forms in Chrome
-with the Modernform Build2Quote Bridge.
+with the Modernform Build2Quote Bridge (TQL, DSV and Old Dominion; EchoShip and MyUnishippers are
+turned off in `edition.py` / `edition.js`).
 
 It is a local Windows application (FastAPI + React + SQLite), installed with
 `ModernformQuoteHelperSetup-<version>.exe` and updated later with `ModernformQuoteHelperUpdate-<version>.zip`

@@ -11,6 +11,14 @@ export const SETUP_PREFIX = MODERNFORM ? "ModernformQuoteHelperSetup-" : "QuoteH
 // The product catalog in the simple "item list" layout with a Cabinet Colors list (color name → item prefix).
 export const SIMPLE_CATALOG = MODERNFORM;
 export const CATALOG_LABEL = MODERNFORM ? "Item master" : "Highland item master";
+// Broker sites offered for autofill (backend: edition.py "brokers"). null = all of them.
+export const ENABLED_BROKERS = MODERNFORM ? ["tql", "dsv", "odfl"] : null;
+// The same brokers as price sources in Quote History (the price-source keys use "echo").
+const SOURCE_KEYS = { echoship: "echo" };
+export const brokerEnabled = (key) => !ENABLED_BROKERS
+  || ENABLED_BROKERS.some((broker) => broker === key || SOURCE_KEYS[broker] === key)
+  || !["echoship", "echo", "tql", "dsv", "myunishippers", "odfl"].includes(key);
+
 export const FEATURES = {
   // Shipments, customer answers (approve → shipment), prepared emails, sales reps, the dashboard and
   // Freight Data reports.

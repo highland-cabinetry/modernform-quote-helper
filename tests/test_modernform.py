@@ -272,11 +272,15 @@ def test_import_both_documents_pack_and_prepare_every_broker(client, repo):
 
 
 def check_packet(client, plan, handoffs, skipped):
-    # Every broker opens, except one that cannot take this shipment (Old Dominion: pallets over 96 in
+    # ModernForm quotes with TQL, DSV and Old Dominion only (EchoShip and MyUnishippers are off). Every
+    # enabled broker opens, except one that cannot take this shipment (Old Dominion: pallets over 96 in
     # long), which is reported instead of stopping the others.
-    assert {handoff["broker"] for handoff in handoffs} | {entry["broker"] for entry in skipped} == {
-        "echoship", "tql", "dsv", "myunishippers", "odfl"}
-    assert {"echoship", "tql", "dsv", "myunishippers"} <= {handoff["broker"] for handoff in handoffs}
+    opened = {handoff["broker"] for handoff in handoffs}
+    assert opened | {entry["broker"] for entry in skipped} == {"tql", "dsv", "odfl"}
+    assert {"tql", "dsv"} <= {handoff["broker"] for handoff in handoffs}
+    for broker in ("echoship", "myunishippers"):
+        refused = client.post(f"/api/quote-handoffs/{broker}/prepare", json={"shipment_id": plan["id"]})
+        assert refused.status_code == 422 and "turned off" in refused.text
     assert all(entry["broker"] == "odfl" and "96" in entry["reason"] for entry in skipped)
 
     # The Modernform Bridge (its own extension ID) can read the packet; another extension cannot.

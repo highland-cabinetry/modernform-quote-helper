@@ -4,7 +4,7 @@ import {
   Send, Trash2, Truck, Undo2, X,
 } from "lucide-react";
 import { getJson, sendJson } from "../api";
-import { FEATURES } from "../edition";
+import { FEATURES, brokerEnabled } from "../edition";
 import { ErrorBlock, Field, Loading, StatusBadge, Timeline } from "./Common";
 import { EmailDraftLayer, LayerDrawer, LayerModal } from "./QuoteLayers";
 import {
@@ -426,7 +426,7 @@ function OptionForm({ id, initial, busy, submitLabel, onSubmit, onCancel, autoFo
     <form className="qd-option-form" onSubmit={submit} onKeyDown={keys} data-own-escape={onCancel ? "" : undefined} noValidate>
       <label className="field field-sm qd-f-source"><span>Source</span>
         <select id={`${id}-source`} value={form.source} onChange={set("source")}>
-          {Object.entries(QUOTE_SOURCES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          {Object.entries(QUOTE_SOURCES).filter(([key]) => brokerEnabled(key) || key === form.source).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
         </select></label>
       <label className="field field-sm qd-f-carrier"><span>Carrier</span><input id={`${id}-carrier`} value={form.carrier} autoFocus={autoFocus} maxLength={120} placeholder="e.g. Saia" onChange={set("carrier")} /></label>
       <label className={`field field-sm qd-f-price ${problem.startsWith("Enter the price") ? "has-error" : ""}`}><span>Price ($)</span>

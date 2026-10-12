@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modernform-quote-helper"
-version = "1.0.0"
+version = "1.0.1"
 description = "Modernform Quote Helper: pallet planning and broker autofill for cabinet freight quotes"
 requires-python = ">=3.11,<3.15"
 dependencies = [

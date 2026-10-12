@@ -1,5 +1,6 @@
 import { Badge } from "./Common";
 import { CUSTOMER_STATUS, LOCATION_TYPES, QUOTE_SOURCES, money } from "../lib/format";
+import { brokerEnabled } from "../edition";
 
 // Small pieces shared by the quote drawer, the order's quote history and Quote History.
 
@@ -10,7 +11,7 @@ export const BROKER_ORDER = ["echo", "myunishippers", "dsv", "tql", "odfl"];
 
 export function nextSource(options = []) {
   const entered = new Set(options.map((option) => option.source));
-  return BROKER_ORDER.find((source) => !entered.has(source)) || "other";
+  return BROKER_ORDER.find((source) => brokerEnabled(source) && !entered.has(source)) || "other";
 }
 
 export function sourceName(option) {

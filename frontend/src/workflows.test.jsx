@@ -4,6 +4,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import QuickQuote, { BrokerProgress, manualPayload } from "./QuoteWorkflows";
 import { getJson, sendJson } from "./api";
 vi.mock("./PalletViewer", () => ({ default: () => <div>Viewer</div> }));
+// These tests cover every broker (the upstream list); Modernform turns some off in edition.js.
+vi.mock("./edition", async (importOriginal) => ({ ...(await importOriginal()), ENABLED_BROKERS: null, brokerEnabled: () => true }));
 vi.mock("./api", () => ({ getJson: vi.fn(async () => []), sendJson: vi.fn(async () => ({ quote_packet: { pallets: [] }, handoff_validation: { ready: false } })) }));
 const settings = { quote_origin: { postal_code: "80022" }, default_commodity_description: "Cabinets", default_nmfc: "79300" };
 beforeEach(() => {

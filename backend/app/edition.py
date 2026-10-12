@@ -38,6 +38,8 @@ class Edition:
     origin: dict[str, str] = field(default_factory=dict)
     # Starter catalog and packing settings applied on first start (never over existing data).
     seed_file: str | None = None
+    # Broker sites the Bridge fills (Get quotes), in display order.
+    brokers: tuple[str, ...] = ("echoship", "tql", "dsv", "myunishippers", "odfl")
 
 
 EDITIONS: dict[str, Edition] = {
@@ -67,6 +69,8 @@ EDITIONS: dict[str, Edition] = {
             "postal_code": "75006",
         },
         seed_file="modernform_seed.json",
+        # EchoShip and MyUnishippers are not used by ModernForm.
+        brokers=("tql", "dsv", "odfl"),
     ),
 }
 
